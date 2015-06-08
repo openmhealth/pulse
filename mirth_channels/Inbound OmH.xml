@@ -1,0 +1,1328 @@
+<channel version="3.2.0">
+  <id>a8454dfe-aa8e-469f-a5bc-fe30fd3d3033</id>
+  <nextMetaDataId>2</nextMetaDataId>
+  <name>Inbound OmH</name>
+  <description></description>
+  <enabled>true</enabled>
+  <lastModified>
+    <time>1433362233865</time>
+    <timezone>America/Chicago</timezone>
+  </lastModified>
+  <revision>177</revision>
+  <sourceConnector version="3.2.0">
+    <metaDataId>0</metaDataId>
+    <name>sourceConnector</name>
+    <properties class="com.mirth.connect.connectors.http.HttpReceiverProperties" version="3.2.0">
+      <pluginProperties/>
+      <listenerConnectorProperties version="3.2.0">
+        <host>0.0.0.0</host>
+        <port>5380</port>
+      </listenerConnectorProperties>
+      <sourceConnectorProperties version="3.2.0">
+        <responseVariable>None</responseVariable>
+        <respondAfterProcessing>true</respondAfterProcessing>
+        <processBatch>false</processBatch>
+        <firstResponse>false</firstResponse>
+        <resourceIds class="singleton-set">
+          <string>Default Resource</string>
+        </resourceIds>
+      </sourceConnectorProperties>
+      <xmlBody>false</xmlBody>
+      <parseMultipart>true</parseMultipart>
+      <includeMetadata>false</includeMetadata>
+      <binaryMimeTypes>application/, image/, video/, audio/</binaryMimeTypes>
+      <binaryMimeTypesRegex>false</binaryMimeTypesRegex>
+      <responseContentType>text/plain</responseContentType>
+      <responseDataTypeBinary>false</responseDataTypeBinary>
+      <responseStatusCode></responseStatusCode>
+      <responseHeaders class="linked-hash-map"/>
+      <charset>UTF-8</charset>
+      <contextPath></contextPath>
+      <timeout>0</timeout>
+      <staticResources/>
+    </properties>
+    <transformer version="3.2.0">
+      <steps>
+        <step>
+          <sequenceNumber>0</sequenceNumber>
+          <name>Map OHM to ORU message</name>
+          <script>var json = JSON.parse(connectorMessage.getRawData());
+var currentDate = DateUtil.getCurrentDate(&quot;yyyyMMddHHmmss&quot;).toString();
+var i = 0;
+channelMap.put(&quot;tmp&quot;, tmp);
+
+// MSH
+tmp[&apos;MSH&apos;][&apos;MSH.7&apos;][&apos;MSH.7.1&apos;] = currentDate;
+tmp[&apos;MSH&apos;][&apos;MSH.9&apos;][&apos;MSH.9.1&apos;] = &quot;ORU&quot;;
+tmp[&apos;MSH&apos;][&apos;MSH.9&apos;][&apos;MSH.9.2&apos;] = &quot;R01&quot;;
+
+// effective_time_frame
+if (json.effective_time_frame) 
+{
+	if (json.effective_time_frame.date_time) {
+		tmp[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;] = convertISODate(json.effective_time_frame.date_time);
+	}
+	else if (json.effective_time_frame.time_interval) 
+	{
+		var ti = json.effective_time_frame.time_interval;
+		if (ti.start_date_time) 
+			tmp[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;] = convertISODate(ti.start_date_time);
+		if (ti.end_date_time) 
+			tmp[&apos;OBR&apos;][&apos;OBR.8&apos;][&apos;OBR.8.1&apos;] = convertISODate(ti.end_date_time);
+	}
+}
+
+// user_notes
+if (json.user_notes) tmp[&apos;NTE&apos;][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;] = json.user_notes;
+
+// activity_name (physical activity)
+if ( json.activity_name &amp;&amp; !(json.kcal_burned) ) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;257733005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Physical activity&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;257733005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Activity (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.activity_name.toString();
+
+	if (json.distance) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;410668003&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Distance&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;410668003&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Length&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.distance.value.toString();
+		tmp[&apos;OBX&apos;][i][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.distance.unit;
+	}
+} // end activity_name (physical activity)
+
+// blood_glucose
+if (json.blood_glucose) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;365812005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Blood glucose level&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;365812005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Blood glucose level (finding)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.blood_glucose.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mg/dL&quot;;
+
+	if (json.blood_specimen_type) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch (json.blood_specimen_type) 
+		{
+			case &quot;whole blood&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;420135007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Whole blood&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;420135007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Whole blood (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;plasma&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;50863008&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Plasma&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;50863008&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;plasma (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;serum&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;67922002&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;serum&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;67922002&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;serum (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+
+	if (json.temporal_relationship_to_meal) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch (json.temporal_relationship_to_meal) 
+		{
+			 case &quot;fasting&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;16985007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Fasting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;16985007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Fasting (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;not fasting&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;440565004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Not fasting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;440565004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Not fasting (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;before meal&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307165006&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before meal&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307165006&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before meal (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;after meal&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;24863003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After meal&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;24863003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After meal (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;before breakfast&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92679&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before breakfast&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92679&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before breakfast(finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+			case &quot;after breakfast&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92687&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After breakfast&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92687&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After breakfast (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;before lunch&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92681&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before lunch&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92681&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before lunch (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;after lunch&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C64600&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After lunch&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C64600&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After lunch (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;before dinner&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92682&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before dinner&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92682&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before dinner (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;after dinner&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C64602&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After dinner&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C64602&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After dinner (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+		}
+	}
+	
+	if (json.temporal_relationship_to_sleep) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch(json.temporal_relationship_to_sleep) 
+		{
+			case &quot;before sleeping&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307155000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before sleeping&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307155000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before sleeping (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;during sleep&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;309610004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;During sleep&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;309610004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;During sleep (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;on waking&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307156004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;On waking&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307156004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;On waking (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}	
+} // end blood_glucose
+
+// blood_pressure
+if (json.systolic_blood_pressure || json.diastolic_blood_pressure) 
+{
+	if (json.systolic_blood_pressure) 
+	{
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;271649006&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Systolic blood pressure&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;271649006&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Systolic blood pressure (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		
+		tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.systolic_blood_pressure.value.toString();
+		tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mmHg&quot;;
+	}
+	if (json.diastolic_blood_pressure) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;271650006&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Diastolic blood pressure&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;271650006&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Diastolic blood pressure (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.diastolic_blood_pressure.value.toString();
+		tmp[&apos;OBX&apos;][i][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mmHg&quot;;
+	}
+	if (json.position_during_measurement) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		var pos = json.position_during_measurement;
+		switch (pos) 
+		{
+			case &quot;sitting&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;33586001&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Sitting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;33586001&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Sitting position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;lying down&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;102538003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Lying down&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;102538003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Recumbent body position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+								
+			case &quot;standing&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;10904000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Standing&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;10904000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Orthostatic body position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+} // end blood_pressure
+
+// body_mass_index
+if (json.body_mass_index) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;60621009&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;BMI - body mass index&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;60621009&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body mass index (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_mass_index.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;kg/m2&quot;;
+} // end body_mass_index
+
+// body_height
+if (json.body_height) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;50373000&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Body height&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;50373000&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body height measure (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_height.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.body_height.unit;
+} // end body_height
+
+// body_weight
+if (json.body_weight) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Body weight&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body weight measure (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_weight.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.body_weight.unit;
+} // end body_weight
+
+// heart_rate
+if (json.heart_rate) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Heart rate&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Pulse rate (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.heart_rate.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;beats/min&quot;;
+
+	if (json.temporal_relationship_to_physical_activity) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		var trpa = json.temporal_relationship_to_physical_activity;
+		switch (trpa)
+		{
+			case &quot;at rest&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;263678003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;At rest&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;263678003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;At rest (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;active&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;55561003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Active&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;55561003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Active (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;before exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307166007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307166007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;after exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;255214003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;255214003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;during exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;309604004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;During exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;309604004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;During exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+} // end heart_rate
+
+// kcal_burned
+if (json.kcal_burned) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;41981-2&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Calories burned&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;LOINC&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;41981-2&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;LN&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.kcal_burned.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;kcal&quot;;
+
+	if (json.activity_name)
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;257733005&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Activity&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;257733005&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Activity (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.activity_name.toString();
+	}
+} // end kcal_burned
+
+// minutes_moderate_activity
+if (json.minutes_moderate_activity) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;103335007&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Minutes moderate activity&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;103335007&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Duration (qualifier value)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.minutes_moderate_activity.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;min&quot;;
+} // end minutes_moderate_activity
+
+// sleep_duration
+if ( json.sleep_duration ) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;248263006&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Sleep duration&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;248263006&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Duration of sleep (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.sleep_duration.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.sleep_duration.unit;
+} // end sleep_duration
+
+// step_count
+if (json.step_count) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;55423-8&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Step count&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;LOINC&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;55423-8&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;LN&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.step_count.toString();
+} // end step_count
+
+responseMap.put(&quot;values &quot;, SerializerFactory.getSerializer(&apos;HL7V2&apos;).fromXML(tmp).toString());</script>
+          <type>JavaScript</type>
+          <data>
+            <entry>
+              <string>Script</string>
+              <string>var json = JSON.parse(connectorMessage.getRawData());
+var currentDate = DateUtil.getCurrentDate(&quot;yyyyMMddHHmmss&quot;).toString();
+var i = 0;
+channelMap.put(&quot;tmp&quot;, tmp);
+
+// MSH
+tmp[&apos;MSH&apos;][&apos;MSH.7&apos;][&apos;MSH.7.1&apos;] = currentDate;
+tmp[&apos;MSH&apos;][&apos;MSH.9&apos;][&apos;MSH.9.1&apos;] = &quot;ORU&quot;;
+tmp[&apos;MSH&apos;][&apos;MSH.9&apos;][&apos;MSH.9.2&apos;] = &quot;R01&quot;;
+
+// effective_time_frame
+if (json.effective_time_frame) 
+{
+	if (json.effective_time_frame.date_time) {
+		tmp[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;] = convertISODate(json.effective_time_frame.date_time);
+	}
+	else if (json.effective_time_frame.time_interval) 
+	{
+		var ti = json.effective_time_frame.time_interval;
+		if (ti.start_date_time) 
+			tmp[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;] = convertISODate(ti.start_date_time);
+		if (ti.end_date_time) 
+			tmp[&apos;OBR&apos;][&apos;OBR.8&apos;][&apos;OBR.8.1&apos;] = convertISODate(ti.end_date_time);
+	}
+}
+
+// user_notes
+if (json.user_notes) tmp[&apos;NTE&apos;][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;] = json.user_notes;
+
+// activity_name (physical activity)
+if ( json.activity_name &amp;&amp; !(json.kcal_burned) ) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;257733005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Physical activity&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;257733005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Activity (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.activity_name.toString();
+
+	if (json.distance) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;410668003&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Distance&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;410668003&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Length&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.distance.value.toString();
+		tmp[&apos;OBX&apos;][i][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.distance.unit;
+	}
+} // end activity_name (physical activity)
+
+// blood_glucose
+if (json.blood_glucose) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;365812005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Blood glucose level&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;365812005&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Blood glucose level (finding)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.blood_glucose.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mg/dL&quot;;
+
+	if (json.blood_specimen_type) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch (json.blood_specimen_type) 
+		{
+			case &quot;whole blood&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;420135007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Whole blood&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;420135007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Whole blood (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;plasma&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;50863008&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Plasma&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;50863008&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;plasma (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;serum&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;67922002&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;serum&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;67922002&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;serum (substance)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+
+	if (json.temporal_relationship_to_meal) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch (json.temporal_relationship_to_meal) 
+		{
+			 case &quot;fasting&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;16985007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Fasting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;16985007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Fasting (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;not fasting&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;440565004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Not fasting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;440565004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Not fasting (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;before meal&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307165006&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before meal&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307165006&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before meal (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;after meal&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;24863003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After meal&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;24863003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After meal (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;before breakfast&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92679&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before breakfast&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92679&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before breakfast(finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+			case &quot;after breakfast&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92687&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After breakfast&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92687&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After breakfast (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;before lunch&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92681&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before lunch&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92681&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before lunch (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;after lunch&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C64600&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After lunch&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C64600&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After lunch (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;before dinner&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C92682&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before dinner&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C92682&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before dinner (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+				break;
+
+			case &quot;after dinner&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;C64602&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After dinner&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;NCIT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;C64602&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After dinner (finding)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;NCI&quot;;
+		}
+	}
+	
+	if (json.temporal_relationship_to_sleep) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		switch(json.temporal_relationship_to_sleep) 
+		{
+			case &quot;before sleeping&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307155000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before sleeping&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307155000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before sleeping (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;during sleep&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;309610004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;During sleep&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;309610004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;During sleep (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+
+			case &quot;on waking&quot; :
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307156004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;On waking&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307156004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;On waking (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}	
+} // end blood_glucose
+
+// blood_pressure
+if (json.systolic_blood_pressure || json.diastolic_blood_pressure) 
+{
+	if (json.systolic_blood_pressure) 
+	{
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;271649006&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Systolic blood pressure&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;271649006&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Systolic blood pressure (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		
+		tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.systolic_blood_pressure.value.toString();
+		tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mmHg&quot;;
+	}
+	if (json.diastolic_blood_pressure) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;271650006&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Diastolic blood pressure&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;271650006&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Diastolic blood pressure (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.diastolic_blood_pressure.value.toString();
+		tmp[&apos;OBX&apos;][i][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;mmHg&quot;;
+	}
+	if (json.position_during_measurement) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		var pos = json.position_during_measurement;
+		switch (pos) 
+		{
+			case &quot;sitting&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;33586001&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Sitting&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;33586001&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Sitting position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;lying down&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;102538003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Lying down&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;102538003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Recumbent body position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+								
+			case &quot;standing&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;10904000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Standing&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;10904000&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Orthostatic body position&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+} // end blood_pressure
+
+// body_mass_index
+if (json.body_mass_index) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;60621009&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;BMI - body mass index&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;60621009&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body mass index (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_mass_index.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;kg/m2&quot;;
+} // end body_mass_index
+
+// body_height
+if (json.body_height) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;50373000&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Body height&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;50373000&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body height measure (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_height.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.body_height.unit;
+} // end body_height
+
+// body_weight
+if (json.body_weight) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Body weight&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Body weight measure (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.body_weight.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.body_weight.unit;
+} // end body_weight
+
+// heart_rate
+if (json.heart_rate) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Heart rate&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;363808001&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Pulse rate (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.heart_rate.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;beats/min&quot;;
+
+	if (json.temporal_relationship_to_physical_activity) 
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		var trpa = json.temporal_relationship_to_physical_activity;
+		switch (trpa)
+		{
+			case &quot;at rest&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;263678003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;At rest&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;263678003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;At rest (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;active&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;55561003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Active&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;55561003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Active (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;before exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;307166007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Before exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;307166007&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Before exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;after exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;255214003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;After exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;255214003&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;After exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+				break;
+				
+			case &quot;during exercise&quot;:
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;309604004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;During exercise&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;309604004&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;During exercise (qualifier value)&quot;;
+				tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+		}
+	}
+} // end heart_rate
+
+// kcal_burned
+if (json.kcal_burned) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;41981-2&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Calories burned&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;LOINC&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;41981-2&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;LN&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.kcal_burned.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;kcal&quot;;
+
+	if (json.activity_name)
+	{
+		createSegmentAfter(&apos;OBX&apos;, tmp[&apos;OBX&apos;][i]);
+		i++;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.1&apos;][&apos;OBX.1.1&apos;] = i+1;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;257733005&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Activity&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;257733005&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Activity (observable entity)&quot;;
+		tmp[&apos;OBX&apos;][i][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+		tmp[&apos;OBX&apos;][i][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.activity_name.toString();
+	}
+} // end kcal_burned
+
+// minutes_moderate_activity
+if (json.minutes_moderate_activity) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;103335007&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Minutes moderate activity&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;103335007&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Duration (qualifier value)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.minutes_moderate_activity.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = &quot;min&quot;;
+} // end minutes_moderate_activity
+
+// sleep_duration
+if ( json.sleep_duration ) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;248263006&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Sleep duration&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;SNOMED-CT&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;248263006&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.5&apos;] = &quot;Duration of sleep (observable entity)&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;SCT&quot;;
+	
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.sleep_duration.value.toString();
+	tmp[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;] = json.sleep_duration.unit;
+} // end sleep_duration
+
+// step_count
+if (json.step_count) 
+{
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.1&apos;] = &quot;55423-8&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.2&apos;] = &quot;Step count&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.3&apos;] = &quot;LOINC&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;] = &quot;55423-8&quot;;
+	tmp[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;] = &quot;LN&quot;;
+
+	tmp[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;] = json.step_count.toString();
+} // end step_count
+
+responseMap.put(&quot;values &quot;, SerializerFactory.getSerializer(&apos;HL7V2&apos;).fromXML(tmp).toString());</string>
+            </entry>
+          </data>
+        </step>
+      </steps>
+      <inboundTemplate encoding="base64"></inboundTemplate>
+      <outboundTemplate encoding="base64">TVNIfF5+XCZ8Q0FUQUxZWkV8T3BlbiBtSGVhbHRofHx8fHx8fHwyLjMxClBJRHwxfHx8fF58fHx8
+fHxeXl5efHx8fHx8fApQVjF8MXx8fHx8fHx8fHx8fHx8fHx8fApPQlJ8MXx8fHx8fHx8fHx8fHx8
+fHx8fHx8fHx8fHx8Ck9CWHwxfHx8fHx8fHx8fHx8fApOVEV8MXx8fAo=</outboundTemplate>
+      <inboundDataType>RAW</inboundDataType>
+      <outboundDataType>HL7V2</outboundDataType>
+      <inboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+        <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+          <splitType>JavaScript</splitType>
+          <batchScript></batchScript>
+        </batchProperties>
+      </inboundProperties>
+      <outboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+        <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+          <handleRepetitions>true</handleRepetitions>
+          <handleSubcomponents>true</handleSubcomponents>
+          <useStrictParser>false</useStrictParser>
+          <useStrictValidation>false</useStrictValidation>
+          <stripNamespaces>true</stripNamespaces>
+          <segmentDelimiter>\r</segmentDelimiter>
+          <convertLineBreaks>true</convertLineBreaks>
+        </serializationProperties>
+        <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+          <useStrictParser>false</useStrictParser>
+          <useStrictValidation>false</useStrictValidation>
+          <segmentDelimiter>\r</segmentDelimiter>
+        </deserializationProperties>
+        <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+          <splitType>MSH_Segment</splitType>
+          <batchScript></batchScript>
+        </batchProperties>
+        <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+          <segmentDelimiter>\r</segmentDelimiter>
+          <successfulACKCode>AA</successfulACKCode>
+          <successfulACKMessage></successfulACKMessage>
+          <errorACKCode>AE</errorACKCode>
+          <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+          <rejectedACKCode>AR</rejectedACKCode>
+          <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+          <msh15ACKAccept>false</msh15ACKAccept>
+          <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+        </responseGenerationProperties>
+        <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+          <successfulACKCode>AA,CA</successfulACKCode>
+          <errorACKCode>AE,CE</errorACKCode>
+          <rejectedACKCode>AR,CR</rejectedACKCode>
+          <validateMessageControlId>true</validateMessageControlId>
+          <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+          <originalIdMapVariable></originalIdMapVariable>
+        </responseValidationProperties>
+      </outboundProperties>
+    </transformer>
+    <filter version="3.2.0">
+      <rules/>
+    </filter>
+    <transportName>HTTP Listener</transportName>
+    <mode>SOURCE</mode>
+    <enabled>true</enabled>
+    <waitForPrevious>true</waitForPrevious>
+  </sourceConnector>
+  <destinationConnectors>
+    <connector version="3.2.0">
+      <metaDataId>1</metaDataId>
+      <name>Destination 1</name>
+      <properties class="com.mirth.connect.connectors.vm.VmDispatcherProperties" version="3.2.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="3.2.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="singleton-set">
+            <string>Default Resource</string>
+          </resourceIds>
+        </destinationConnectorProperties>
+        <channelId>none</channelId>
+        <channelTemplate></channelTemplate>
+        <mapVariables/>
+      </properties>
+      <transformer version="3.2.0">
+        <steps/>
+        <inboundDataType>HL7V2</inboundDataType>
+        <outboundDataType>HL7V2</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+          <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+            <handleRepetitions>true</handleRepetitions>
+            <handleSubcomponents>true</handleSubcomponents>
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <stripNamespaces>true</stripNamespaces>
+            <segmentDelimiter>\r</segmentDelimiter>
+            <convertLineBreaks>true</convertLineBreaks>
+          </serializationProperties>
+          <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <segmentDelimiter>\r</segmentDelimiter>
+          </deserializationProperties>
+          <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+            <splitType>MSH_Segment</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+          <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+            <segmentDelimiter>\r</segmentDelimiter>
+            <successfulACKCode>AA</successfulACKCode>
+            <successfulACKMessage></successfulACKMessage>
+            <errorACKCode>AE</errorACKCode>
+            <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+            <rejectedACKCode>AR</rejectedACKCode>
+            <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+            <msh15ACKAccept>false</msh15ACKAccept>
+            <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+          </responseGenerationProperties>
+          <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+            <successfulACKCode>AA,CA</successfulACKCode>
+            <errorACKCode>AE,CE</errorACKCode>
+            <rejectedACKCode>AR,CR</rejectedACKCode>
+            <validateMessageControlId>true</validateMessageControlId>
+            <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+            <originalIdMapVariable></originalIdMapVariable>
+          </responseValidationProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+          <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+            <handleRepetitions>true</handleRepetitions>
+            <handleSubcomponents>true</handleSubcomponents>
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <stripNamespaces>true</stripNamespaces>
+            <segmentDelimiter>\r</segmentDelimiter>
+            <convertLineBreaks>true</convertLineBreaks>
+          </serializationProperties>
+          <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <segmentDelimiter>\r</segmentDelimiter>
+          </deserializationProperties>
+          <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+            <splitType>MSH_Segment</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+          <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+            <segmentDelimiter>\r</segmentDelimiter>
+            <successfulACKCode>AA</successfulACKCode>
+            <successfulACKMessage></successfulACKMessage>
+            <errorACKCode>AE</errorACKCode>
+            <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+            <rejectedACKCode>AR</rejectedACKCode>
+            <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+            <msh15ACKAccept>false</msh15ACKAccept>
+            <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+          </responseGenerationProperties>
+          <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+            <successfulACKCode>AA,CA</successfulACKCode>
+            <errorACKCode>AE,CE</errorACKCode>
+            <rejectedACKCode>AR,CR</rejectedACKCode>
+            <validateMessageControlId>true</validateMessageControlId>
+            <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+            <originalIdMapVariable></originalIdMapVariable>
+          </responseValidationProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="3.2.0">
+        <steps/>
+        <inboundDataType>HL7V2</inboundDataType>
+        <outboundDataType>HL7V2</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+          <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+            <handleRepetitions>true</handleRepetitions>
+            <handleSubcomponents>true</handleSubcomponents>
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <stripNamespaces>true</stripNamespaces>
+            <segmentDelimiter>\r</segmentDelimiter>
+            <convertLineBreaks>true</convertLineBreaks>
+          </serializationProperties>
+          <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <segmentDelimiter>\r</segmentDelimiter>
+          </deserializationProperties>
+          <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+            <splitType>MSH_Segment</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+          <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+            <segmentDelimiter>\r</segmentDelimiter>
+            <successfulACKCode>AA</successfulACKCode>
+            <successfulACKMessage></successfulACKMessage>
+            <errorACKCode>AE</errorACKCode>
+            <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+            <rejectedACKCode>AR</rejectedACKCode>
+            <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+            <msh15ACKAccept>false</msh15ACKAccept>
+            <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+          </responseGenerationProperties>
+          <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+            <successfulACKCode>AA,CA</successfulACKCode>
+            <errorACKCode>AE,CE</errorACKCode>
+            <rejectedACKCode>AR,CR</rejectedACKCode>
+            <validateMessageControlId>true</validateMessageControlId>
+            <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+            <originalIdMapVariable></originalIdMapVariable>
+          </responseValidationProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+          <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+            <handleRepetitions>true</handleRepetitions>
+            <handleSubcomponents>true</handleSubcomponents>
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <stripNamespaces>true</stripNamespaces>
+            <segmentDelimiter>\r</segmentDelimiter>
+            <convertLineBreaks>true</convertLineBreaks>
+          </serializationProperties>
+          <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+            <useStrictParser>false</useStrictParser>
+            <useStrictValidation>false</useStrictValidation>
+            <segmentDelimiter>\r</segmentDelimiter>
+          </deserializationProperties>
+          <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+            <splitType>MSH_Segment</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+          <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+            <segmentDelimiter>\r</segmentDelimiter>
+            <successfulACKCode>AA</successfulACKCode>
+            <successfulACKMessage></successfulACKMessage>
+            <errorACKCode>AE</errorACKCode>
+            <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+            <rejectedACKCode>AR</rejectedACKCode>
+            <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+            <msh15ACKAccept>false</msh15ACKAccept>
+            <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+          </responseGenerationProperties>
+          <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+            <successfulACKCode>AA,CA</successfulACKCode>
+            <errorACKCode>AE,CE</errorACKCode>
+            <rejectedACKCode>AR,CR</rejectedACKCode>
+            <validateMessageControlId>true</validateMessageControlId>
+            <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+            <originalIdMapVariable></originalIdMapVariable>
+          </responseValidationProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="3.2.0">
+        <rules/>
+      </filter>
+      <transportName>Channel Writer</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
+  </destinationConnectors>
+  <preprocessingScript>// Modify the message variable below to pre process data
+return message;</preprocessingScript>
+  <postprocessingScript>// This script executes once after a message has been processed
+// Responses returned from here will be stored as &quot;Postprocessor&quot; in the response map
+return;</postprocessingScript>
+  <deployScript>// This script executes once when the channel is deployed
+// You only have access to the globalMap and globalChannelMap here to persist data
+return;</deployScript>
+  <undeployScript>// This script executes once when the channel is undeployed
+// You only have access to the globalMap and globalChannelMap here to persist data
+return;</undeployScript>
+  <properties version="3.2.0">
+    <clearGlobalChannelMap>true</clearGlobalChannelMap>
+    <messageStorageMode>PRODUCTION</messageStorageMode>
+    <encryptData>false</encryptData>
+    <removeContentOnCompletion>false</removeContentOnCompletion>
+    <removeAttachmentsOnCompletion>false</removeAttachmentsOnCompletion>
+    <initialState>STARTED</initialState>
+    <storeAttachments>false</storeAttachments>
+    <tags class="linked-hash-set"/>
+    <metaDataColumns>
+      <metaDataColumn>
+        <name>SOURCE</name>
+        <type>STRING</type>
+        <mappingName>mirth_source</mappingName>
+      </metaDataColumn>
+      <metaDataColumn>
+        <name>TYPE</name>
+        <type>STRING</type>
+        <mappingName>mirth_type</mappingName>
+      </metaDataColumn>
+    </metaDataColumns>
+    <attachmentProperties>
+      <type>None</type>
+      <properties/>
+    </attachmentProperties>
+    <archiveEnabled>true</archiveEnabled>
+    <resourceIds class="linked-hash-set">
+      <string>Default Resource</string>
+    </resourceIds>
+  </properties>
+</channel>

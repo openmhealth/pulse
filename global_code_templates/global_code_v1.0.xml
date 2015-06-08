@@ -1,0 +1,168 @@
+<list>
+  <codeTemplate version="3.2.0">
+    <id>270003aa-9350-45a7-9397-58679320cb9d</id>
+    <name>Get Segments After a Particular Segment</name>
+    <tooltip>Returns an array of segments with the specified name that come after a given segment in the message.</tooltip>
+    <code>/*
+	Author: Nick Rupley
+	Date Modified: 2/13/2013
+	getSegmentsAfter: Returns an array of segments with the specified name that come after a given segment in the message.
+
+	Arguments
+	---------
+		Required
+		--------
+			root:			The root HL7Message node of the message, or the parent of the segment node.
+			startSeg:		The segment AFTER which to start collecting segments.
+			segName:		The name (String or RegExp) of the segments you want to collect.
+
+		Optional
+		--------
+			consecutiveInd:	If true, indicates that the segments are expected to come directly after startSeg. 
+							If false, segments are collected until another segment with the same name as startSeg is encountered.
+							Defaults to false.
+			stopSegNames:	An array of segment names that, when encountered, stop the collection of segments.
+*/
+
+function getSegmentsAfter(root, startSeg, segName, consecutiveInd, stopSegNames) {
+	function test(str) {
+		return segName instanceof RegExp ? segName.test(str) : segName === str;
+	}
+
+	// The index to start collection is the next one up from the starting segment
+	var index = startSeg.childIndex()+1;
+	// The return array
+	var out = [];
+	// Boolean placeholder to stop iteration
+	var done = false;
+	// Object that will contain all of the stopSegNames strings, bound to a truthy value (1)
+	var stopNames = {};
+	// Indicates whether we have any stop segments
+	var stopNamesInd = false;
+	// If stopSegNames is defined
+	if (stopSegNames !== undefined &amp;&amp; stopSegNames !== null) {
+		// Set our indicator to true
+		stopNamesInd = true;
+		// Add each string in the array to our object
+		for each (name in stopSegNames)
+			stopNames[name] = 1;
+	}
+
+	// Iterate through each child in the root, starting at the segment after startSeg, and
+	// ending at the final segment, or when the done flag is set to true.
+	while (index &lt; root.children().length() &amp;&amp; !done) {
+		// If a stop segment is encountered, stop iteration
+		if (stopNamesInd &amp;&amp; root.children()[index].name().toString() in stopNames)
+			done = true;
+		// If a segment with the same name as startSeg is encountered, stop iteration
+		else if (root.children()[index].name().toString() == startSeg.name().toString() &amp;&amp; !consecutiveInd)
+			done = true;
+		// If we&apos;re only collecting consecutive segments and we encounter a segment with a name other than segName, stop iteration
+		else if (!test(root.children()[index].name().toString()) &amp;&amp; consecutiveInd)
+			done = true;
+		// If all previous tests passed, and the current segment has a name of segName, then add it to our array
+		else if (test(root.children()[index].name().toString()))
+			out.push(root.children()[index]);
+		// Increment our index counter
+		index++;
+	}
+
+	// Return the output array
+	return out;
+}</code>
+    <type>FUNCTION</type>
+    <scope>0</scope>
+  </codeTemplate>
+  <codeTemplate version="3.2.0">
+    <id>dc230931-3f70-4a03-b82c-fdc4f6d1ac7f</id>
+    <name>Convert HL7 Date Format</name>
+    <tooltip>Converts standard HL7 v2.x date format to human-readable ISO date format</tooltip>
+    <code>/* author: abakken */
+
+function convertHL7Date( date ) {
+ 
+	/*  Check that the date string is
+		1) not null
+		2) a positive integer or timestamp
+		4) valid length	*/
+
+	if ( date != null &amp;&amp; !isNaN(date) &amp;&amp; date &gt; 0 &amp;&amp; date.length == 14 ) {
+		return new String(DateUtil.convertDate(&quot;yyyyMMddHHmmss&quot;, &quot;yyyy-MM-dd HH:mm:ss&quot;, date));
+	} else if ( date != null &amp;&amp; !isNaN(date) &amp;&amp; date &gt; 0 &amp;&amp; date.length == 12 ) {
+		return new String(DateUtil.convertDate(&quot;yyyyMMddHHmm&quot;, &quot;yyyy-MM-dd HH:mm&quot;, date));
+	} else if ( date != null &amp;&amp; !isNaN(date) &amp;&amp; date &gt; 0 &amp;&amp; date.length == 8 ) {
+		return new String(DateUtil.convertDate(&quot;yyyyMMdd&quot;, &quot;yyyy-MM-dd&quot;, date));
+	} else if ( date != null &amp;&amp; !isNaN(date.substring(0,13)) &amp;&amp; date.substring(0,13) &gt; 0 
+			&amp;&amp; !isNaN(date.substring(15,18)) &amp;&amp; date.substring(15,18) &gt; 0 
+			&amp;&amp; date.length == 19 ) {
+		return new String(DateUtil.convertDate(&quot;yyyyMMddHHmmssz&quot;, 
+		&quot;yyyy-MM-dd HH:mm:ss z &quot;, date));
+	} else return date;
+}</code>
+    <type>FUNCTION</type>
+    <scope>0</scope>
+  </codeTemplate>
+  <codeTemplate version="3.2.0">
+    <id>434fca05-9749-4d12-829a-a046b5798e68</id>
+    <name>Check if defined</name>
+    <tooltip>Check that a reference to an object is defined</tooltip>
+    <code>function isDefined(x) {
+	if (typeof x != &apos;undefined&apos;) {
+		return true;
+	}
+	else return false;
+}</code>
+    <type>FUNCTION</type>
+    <scope>0</scope>
+  </codeTemplate>
+  <codeTemplate version="3.2.0">
+    <id>5ac5794b-cf47-4aa5-ac25-d1bbef75e42d</id>
+    <name>Convert ISO Date Format</name>
+    <tooltip>Converts ISO date format to HL7 v2 format</tooltip>
+    <code>/* author: abakken */
+
+function convertISODate( date ) 
+{
+	// yyyy-MM-dd HH:mm:ss
+	if ( date != null &amp;&amp; date.length == 19
+			&amp;&amp; !isNaN(date.substring(0,3)) &amp;&amp; date.charAt(4) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(5,6)) &amp;&amp; date.charAt(7) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(8,9)) &amp;&amp; date.charAt(10) == &quot; &quot;
+			&amp;&amp; !isNaN(date.substring(11,12)) &amp;&amp; date.charAt(13) == &quot;:&quot;
+			&amp;&amp; !isNaN(date.substring(14,15)) &amp;&amp; date.charAt(16) == &quot;:&quot;
+			&amp;&amp; !isNaN(date.substring(17,18)) ) {
+		return new String(DateUtil.convertDate(&quot;yyyy-MM-dd HH:mm:ss&quot;, &quot;yyyyMMddHHmmss&quot;, date));
+	} 
+	// yyyy-MM-dd HH:mm
+	else if ( date != null &amp;&amp; date.length == 16
+			&amp;&amp; !isNaN(date.substring(0,3)) &amp;&amp; date.charAt(4) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(5,6)) &amp;&amp; date.charAt(7) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(8,9)) &amp;&amp; date.charAt(10) == &apos; &apos;
+			&amp;&amp; !isNaN(date.substring(11,12)) &amp;&amp; date.charAt(13) == &quot;:&quot;
+			&amp;&amp; !isNaN(date.substring(14,15)) ) {
+		return new String(DateUtil.convertDate(&quot;yyyy-MM-dd HH:mm&quot;, &quot;yyyyMMddHHmm&quot;, date));	
+	} 
+	// yyyy-MM-dd
+	else if ( date != null &amp;&amp; date.length == 10
+			&amp;&amp; !isNaN(date.substring(0,3)) &amp;&amp; date.charAt(4) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(5,6)) &amp;&amp; date.charAt(7) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(8,9)) ) {
+		return new String(DateUtil.convertDate(&quot;yyyy-MM-dd&quot;, &quot;yyyyMMdd&quot;, date));	
+	}
+	// Timestamp
+	else if ( date != null &amp;&amp; date.length &lt;= 25 &amp;&amp; date.length &gt;= 22 
+			&amp;&amp; !isNaN(date.substring(0,3)) &amp;&amp; date.charAt(4) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(5,6)) &amp;&amp; date.charAt(7) == &quot;-&quot;
+			&amp;&amp; !isNaN(date.substring(8,9)) &amp;&amp; date.charAt(10) == &quot; &quot;
+			&amp;&amp; !isNaN(date.substring(11,12)) &amp;&amp; date.charAt(13) == &quot;:&quot;
+			&amp;&amp; !isNaN(date.substring(14,15)) &amp;&amp; date.charAt(16) == &quot;:&quot;
+			&amp;&amp; !isNaN(date.substring(17,18)) &amp;&amp; date.charAt(19) == &quot; &quot;) {
+		return new String(DateUtil.convertDate(&quot;yyyy-MM-dd HH:mm:ss z&quot;, 
+		&quot;yyyyMMddHHmmssZ&quot;, date));
+	} 
+	else return date;
+}</code>
+    <type>FUNCTION</type>
+    <scope>0</scope>
+  </codeTemplate>
+</list>

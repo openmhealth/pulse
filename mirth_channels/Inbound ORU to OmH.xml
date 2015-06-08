@@ -1,0 +1,1152 @@
+<channel version="3.2.0">
+  <id>fd282052-cae0-4b01-9f4a-2a68f8d4fd8a</id>
+  <nextMetaDataId>3</nextMetaDataId>
+  <name>Inbound ORU to OmH</name>
+  <description></description>
+  <enabled>true</enabled>
+  <lastModified>
+    <time>1432236063959</time>
+    <timezone>America/Chicago</timezone>
+  </lastModified>
+  <revision>205</revision>
+  <sourceConnector version="3.2.0">
+    <metaDataId>0</metaDataId>
+    <name>sourceConnector</name>
+    <properties class="com.mirth.connect.connectors.http.HttpReceiverProperties" version="3.2.0">
+      <pluginProperties/>
+      <listenerConnectorProperties version="3.2.0">
+        <host>0.0.0.0</host>
+        <port>3780</port>
+      </listenerConnectorProperties>
+      <sourceConnectorProperties version="3.2.0">
+        <responseVariable>None</responseVariable>
+        <respondAfterProcessing>true</respondAfterProcessing>
+        <processBatch>false</processBatch>
+        <firstResponse>false</firstResponse>
+        <resourceIds class="singleton-set">
+          <string>Default Resource</string>
+        </resourceIds>
+      </sourceConnectorProperties>
+      <xmlBody>false</xmlBody>
+      <parseMultipart>true</parseMultipart>
+      <includeMetadata>false</includeMetadata>
+      <binaryMimeTypes>application/, image/, video/, audio/</binaryMimeTypes>
+      <binaryMimeTypesRegex>false</binaryMimeTypesRegex>
+      <responseContentType>text/plain</responseContentType>
+      <responseDataTypeBinary>false</responseDataTypeBinary>
+      <responseStatusCode></responseStatusCode>
+      <responseHeaders class="linked-hash-map"/>
+      <charset>UTF-8</charset>
+      <contextPath></contextPath>
+      <timeout>0</timeout>
+      <staticResources/>
+    </properties>
+    <transformer version="3.2.0">
+      <steps>
+        <step>
+          <sequenceNumber>0</sequenceNumber>
+          <name>Convert ORU</name>
+          <script>var json = {};
+var code = msg[&apos;OBX&apos;][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()
+
+if ( msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;SCT&quot;) 
+{
+	switch (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+	{
+		// BLOOD GLUCOSE
+		case &quot;365812005&quot;:
+			json = {
+				&quot;value&quot; : parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+				&quot;units&quot; : msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+			}	
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			var bst;
+			var trm;
+			var trs;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+				{				
+					// Blood Specimen Type
+					case &quot;420135007&quot;:
+						bst = &quot;whole blood&quot;;
+						break;
+					case &quot;50863008&quot;:
+						bst = &quot;plasma&quot;;
+						break;
+					case &quot;67922002&quot;:
+						bst = &quot;serum&quot;;
+						break;
+		
+					// Temporal Relation to Meal
+					case &quot;16985007&quot;:
+						trm = &quot;fasting&quot;;
+						break;
+					case &quot;440565004&quot;:
+						trm = &quot;not fasting&quot;;
+						break;
+					case &quot;307165006&quot;:
+						trm = &quot;before meal&quot;;
+						break;
+					case &quot;24863003&quot;:
+						trm = &quot;after meal&quot;;
+						break;
+					case &quot;C92679&quot;:
+						trm = &quot;before breakfast&quot;;
+						break;
+					case &quot;C92687&quot;:
+						trm = &quot;after breakfast&quot;;
+						break;
+					case &quot;C92681&quot;:
+						trm = &quot;before lunch&quot;;
+						break;
+					case &quot;C64600&quot;:
+						trm = &quot;after lunch&quot;;
+						break;
+					case &quot;C92682&quot;:
+						trm = &quot;before dinner&quot;;
+						break;
+					case &quot;C64602&quot;:
+						trm = &quot;after dinner&quot;;
+						break;
+	
+					// Temporal Relation to Sleep
+					case &quot;307155000&quot;:
+						trs = &quot;before sleeping&quot;;
+						break;
+					case &quot;309610004&quot;:
+						trs = &quot;during sleep&quot;;
+						break;
+					case &quot;307156004&quot;:
+						trs = &quot;on waking&quot;;
+				}
+			}
+			if (bst) json.blood_specimen_type = bst;
+			if (trm) json.temporal_relation_to_meal = trm;
+			if (trs) json.temporal_relation_to_sleep = trs;			
+			if(msg[&apos;NTE&apos;]) 
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// BLOOD PRESSURE, SYSTOLIC (may include diastolic)
+		case &quot;271649006&quot;:	
+			json = {
+    				&quot;systolic_blood_pressure&quot;: {
+     		   		&quot;value&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        				&quot;unit&quot;: &quot;mmHg&quot;
+    				}
+			}
+			var pos;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString())
+				{
+					// Diastolic Blood Pressure
+    					case &quot;271650006&quot;:
+    						json.diastolic_blood_pressure = {
+        						&quot;value&quot;: obx[&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        						&quot;unit&quot;: &quot;mmHg&quot;
+    						}
+					break;
+
+					// Position During Measurement
+					case &quot;33586001&quot;:
+						pos = &quot;sitting&quot;;
+						break;
+					case &quot;102538003&quot;:
+						pos = &quot;lying down&quot;;
+						break;
+					case &quot;10904000&quot;:
+						pos = &quot;standing&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			if (pos) json.position_during_measurement = pos;
+    			if(msg[&apos;NTE&apos;]) 
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// BLOOD PRESSURE, DIASTOLIC (may include systolic)
+		case &quot;271650006&quot;:	
+			var pos;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) {
+					// Systolic Blood Pressure
+    					case &quot;271649006&quot;:
+    						json.systolic_blood_pressure = {
+        						&quot;value&quot;: obx[&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        						&quot;unit&quot;: &quot;mmHg&quot;
+    						}
+					break;
+
+					// Position During Measurement
+					case &quot;33586001&quot;:
+						pos = &quot;sitting&quot;;
+						break;
+					case &quot;102538003&quot;:
+						pos = &quot;lying down&quot;;
+						break;
+					case &quot;10904000&quot;:
+						pos = &quot;standing&quot;;
+				}
+			}
+    			json.diastolic_blood_pressure = {
+        			&quot;value&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        			&quot;unit&quot;: &quot;mmHg&quot;
+    			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			if (pos) json.position_during_measurement = pos;
+    			if(msg[&apos;NTE&apos;]) {
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+    			}	
+			break;
+
+		// BODY HEIGHT
+		case &quot;50373000&quot;:	
+			json = {
+    				&quot;body_height&quot;: {
+        				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+    			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;cm&quot;:
+						json.body_height.units = &quot;cm&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.body_height.units = &quot;m&quot;;
+						break;
+					case &quot;i&quot;:
+						json.body_height.units = &quot;in&quot;;
+						break;
+					case &quot;f&quot;:
+						json.body_height.units = &quot;ft&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+
+		// BMI - BODY MASS INDEX
+		case &quot;60621009&quot;:	
+			json = {
+    				&quot;body_mass_index&quot;: {
+        				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: &quot;kg/m2&quot;
+    				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+			
+		// BODY WEIGHT
+		case &quot;363808001&quot;:	
+			json = {
+    				&quot;body_weight&quot;: {
+     				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;g&quot;:
+						json.body_weight.units = &quot;g&quot;;
+						break;
+					case &quot;k&quot;: 
+						json.body_weight.units = &quot;kg&quot;;
+						break;
+					case &quot;l&quot;:
+					case &quot;p&quot;:
+						json.body_weight.units = &quot;lb&quot;;
+						break;
+					case &quot;o&quot;:
+						json.body_weight.units = &quot;oz&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+			
+		// HEART RATE
+		case &quot;78564009&quot;:
+			json = {
+    				&quot;heart rate&quot;: {
+     				&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+    				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			var trpa;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+				{
+					// Temporal Relationship to Physical Activity
+					case &quot;263678003&quot;:
+						trpa = &quot;at rest&quot;;
+						break;
+					case &quot;55561003&quot;:
+						trpa = &quot;active&quot;;
+						break;
+					case &quot;307166007&quot;:
+						trpa = &quot;before exercise&quot;;
+						break;
+					case &quot;255214003&quot;:
+						trpa = &quot;after exercise&quot;;
+						break;
+					case &quot;309604004&quot;:
+						trpa = &quot;during exercise&quot;;
+				}
+			}
+			if (trpa) json.temporal_relationship_to_physical_activity = trpa;
+			if(msg[&apos;NTE&apos;])
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// MINUTES MODERATE ACTIVITY
+		case &quot;103335007&quot;:
+			json = {
+    				&quot;minutes_moderate_activity&quot;: {
+     				&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString())
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;s&quot;:
+						json.minutes_moderate_activity.value = 
+							(parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)/60).toString();
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+						break;
+					case &quot;h&quot;:
+						json.minutes_moderate_activity.value = 
+							(parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)*60).toString();
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+			break;
+
+		// PHYSICAL ACTIVITY
+		case &quot;257733005&quot;:
+			json = {
+    				&quot;physical_activity&quot;: {
+     				&quot;activity_name&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+    				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+			if (msg[&apos;OBX&apos;][1] &amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString() == &quot;410668003&quot;)
+			{
+				json.physical_activity.distance = {
+					&quot;value&quot; : parseFloat(msg[&apos;OBX&apos;][1][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+				}
+				if (msg[&apos;OBX&apos;][1][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+				{
+					switch (msg[&apos;OBX&apos;][1][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().toLowerCase()) 
+					{
+						case &quot;meters&quot;:
+						case &quot;meter&quot;:
+						case &quot;metres&quot;:
+						case &quot;metre&quot;:
+						case &quot;m&quot;:
+							json.physical_activity.distance.units = &quot;m&quot;;
+							break;
+						case &quot;kilometers&quot;:
+						case &quot;kilometer&quot;:
+						case &quot;kilometres&quot;:
+						case &quot;kilometre&quot;:
+						case &quot;km&quot;:
+						case &quot;k&quot;: 
+							json.physical_activity.distance.units = &quot;km&quot;;
+							break;
+						case &quot;foot&quot;:
+						case &quot;feet&quot;:
+						case &quot;ft&quot;:
+						case &quot;f&quot;:
+							json.physical_activity.distance.units = &quot;ft&quot;;
+							break;
+						case &quot;yard&quot;:
+						case &quot;yards&quot;: 
+						case &quot;yd&quot;: 
+						case &quot;y&quot;:
+							json.physical_activity.distance.units = &quot;yd&quot;;
+							break;
+						case &quot;mile&quot;:
+						case &quot;miles&quot;:
+						case &quot;mi&quot;:
+							json.physical_activity.distance.units = &quot;mi&quot;;
+					}
+				}	
+			}
+			break;
+			
+		// SLEEP DURATION
+		case &quot;248263006&quot;:
+			json = {
+    				&quot;sleep_duration&quot;: {
+     				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString())
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;s&quot;:
+						json.sleep_duration.units = &quot;sec&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.sleep_duration.units = &quot;min&quot;;
+						break;
+					case &quot;h&quot;:
+						json.sleep_duration.units = &quot;h&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+	} // end switch
+} 
+else if (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;LN&quot;) 
+{
+	switch (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+	{
+		// CALORIES BURNED
+		case &quot;41981-2&quot;:
+			json = {
+    				&quot;kcal_burned&quot;: {
+     		   		&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+    				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			if (msg[&apos;OBX&apos;][1] &amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;SCT&quot;
+					&amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString() == &quot;257733005&quot;) {
+						
+    				json.activity_name = msg[&apos;OBX&apos;][1][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString();
+			}	
+			break;
+
+		// STEP COUNT
+		case &quot;55423-8&quot;:
+			json.step_count = parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10);
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+		
+	} // end switch
+}
+
+var jObj = JSON.stringify(json);
+channelMap.put(&quot;jObj&quot;, jObj);</script>
+          <type>JavaScript</type>
+          <data>
+            <entry>
+              <string>Script</string>
+              <string>var json = {};
+var code = msg[&apos;OBX&apos;][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()
+
+if ( msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;SCT&quot;) 
+{
+	switch (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+	{
+		// BLOOD GLUCOSE
+		case &quot;365812005&quot;:
+			json = {
+				&quot;value&quot; : parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+				&quot;units&quot; : msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+			}	
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			var bst;
+			var trm;
+			var trs;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+				{				
+					// Blood Specimen Type
+					case &quot;420135007&quot;:
+						bst = &quot;whole blood&quot;;
+						break;
+					case &quot;50863008&quot;:
+						bst = &quot;plasma&quot;;
+						break;
+					case &quot;67922002&quot;:
+						bst = &quot;serum&quot;;
+						break;
+		
+					// Temporal Relation to Meal
+					case &quot;16985007&quot;:
+						trm = &quot;fasting&quot;;
+						break;
+					case &quot;440565004&quot;:
+						trm = &quot;not fasting&quot;;
+						break;
+					case &quot;307165006&quot;:
+						trm = &quot;before meal&quot;;
+						break;
+					case &quot;24863003&quot;:
+						trm = &quot;after meal&quot;;
+						break;
+					case &quot;C92679&quot;:
+						trm = &quot;before breakfast&quot;;
+						break;
+					case &quot;C92687&quot;:
+						trm = &quot;after breakfast&quot;;
+						break;
+					case &quot;C92681&quot;:
+						trm = &quot;before lunch&quot;;
+						break;
+					case &quot;C64600&quot;:
+						trm = &quot;after lunch&quot;;
+						break;
+					case &quot;C92682&quot;:
+						trm = &quot;before dinner&quot;;
+						break;
+					case &quot;C64602&quot;:
+						trm = &quot;after dinner&quot;;
+						break;
+	
+					// Temporal Relation to Sleep
+					case &quot;307155000&quot;:
+						trs = &quot;before sleeping&quot;;
+						break;
+					case &quot;309610004&quot;:
+						trs = &quot;during sleep&quot;;
+						break;
+					case &quot;307156004&quot;:
+						trs = &quot;on waking&quot;;
+				}
+			}
+			if (bst) json.blood_specimen_type = bst;
+			if (trm) json.temporal_relation_to_meal = trm;
+			if (trs) json.temporal_relation_to_sleep = trs;			
+			if(msg[&apos;NTE&apos;]) 
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// BLOOD PRESSURE, SYSTOLIC (may include diastolic)
+		case &quot;271649006&quot;:	
+			json = {
+    				&quot;systolic_blood_pressure&quot;: {
+     		   		&quot;value&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        				&quot;unit&quot;: &quot;mmHg&quot;
+    				}
+			}
+			var pos;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString())
+				{
+					// Diastolic Blood Pressure
+    					case &quot;271650006&quot;:
+    						json.diastolic_blood_pressure = {
+        						&quot;value&quot;: obx[&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        						&quot;unit&quot;: &quot;mmHg&quot;
+    						}
+					break;
+
+					// Position During Measurement
+					case &quot;33586001&quot;:
+						pos = &quot;sitting&quot;;
+						break;
+					case &quot;102538003&quot;:
+						pos = &quot;lying down&quot;;
+						break;
+					case &quot;10904000&quot;:
+						pos = &quot;standing&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			if (pos) json.position_during_measurement = pos;
+    			if(msg[&apos;NTE&apos;]) 
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// BLOOD PRESSURE, DIASTOLIC (may include systolic)
+		case &quot;271650006&quot;:	
+			var pos;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) {
+					// Systolic Blood Pressure
+    					case &quot;271649006&quot;:
+    						json.systolic_blood_pressure = {
+        						&quot;value&quot;: obx[&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        						&quot;unit&quot;: &quot;mmHg&quot;
+    						}
+					break;
+
+					// Position During Measurement
+					case &quot;33586001&quot;:
+						pos = &quot;sitting&quot;;
+						break;
+					case &quot;102538003&quot;:
+						pos = &quot;lying down&quot;;
+						break;
+					case &quot;10904000&quot;:
+						pos = &quot;standing&quot;;
+				}
+			}
+    			json.diastolic_blood_pressure = {
+        			&quot;value&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+        			&quot;unit&quot;: &quot;mmHg&quot;
+    			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			if (pos) json.position_during_measurement = pos;
+    			if(msg[&apos;NTE&apos;]) {
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+    			}	
+			break;
+
+		// BODY HEIGHT
+		case &quot;50373000&quot;:	
+			json = {
+    				&quot;body_height&quot;: {
+        				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+    			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;cm&quot;:
+						json.body_height.units = &quot;cm&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.body_height.units = &quot;m&quot;;
+						break;
+					case &quot;i&quot;:
+						json.body_height.units = &quot;in&quot;;
+						break;
+					case &quot;f&quot;:
+						json.body_height.units = &quot;ft&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+
+		// BMI - BODY MASS INDEX
+		case &quot;60621009&quot;:	
+			json = {
+    				&quot;body_mass_index&quot;: {
+        				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: &quot;kg/m2&quot;
+    				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+			
+		// BODY WEIGHT
+		case &quot;363808001&quot;:	
+			json = {
+    				&quot;body_weight&quot;: {
+     				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;g&quot;:
+						json.body_weight.units = &quot;g&quot;;
+						break;
+					case &quot;k&quot;: 
+						json.body_weight.units = &quot;kg&quot;;
+						break;
+					case &quot;l&quot;:
+					case &quot;p&quot;:
+						json.body_weight.units = &quot;lb&quot;;
+						break;
+					case &quot;o&quot;:
+						json.body_weight.units = &quot;oz&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			break;
+			
+		// HEART RATE
+		case &quot;78564009&quot;:
+			json = {
+    				&quot;heart rate&quot;: {
+     				&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+    				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+    			var trpa;
+			for each (obx in msg.OBX) 
+			{
+				switch (obx[&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+				{
+					// Temporal Relationship to Physical Activity
+					case &quot;263678003&quot;:
+						trpa = &quot;at rest&quot;;
+						break;
+					case &quot;55561003&quot;:
+						trpa = &quot;active&quot;;
+						break;
+					case &quot;307166007&quot;:
+						trpa = &quot;before exercise&quot;;
+						break;
+					case &quot;255214003&quot;:
+						trpa = &quot;after exercise&quot;;
+						break;
+					case &quot;309604004&quot;:
+						trpa = &quot;during exercise&quot;;
+				}
+			}
+			if (trpa) json.temporal_relationship_to_physical_activity = trpa;
+			if(msg[&apos;NTE&apos;])
+				json.user_notes = msg[&apos;NTE&apos;][0][&apos;NTE.3&apos;][&apos;NTE.3.1&apos;].toString();
+				
+			break;
+
+		// MINUTES MODERATE ACTIVITY
+		case &quot;103335007&quot;:
+			json = {
+    				&quot;minutes_moderate_activity&quot;: {
+     				&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString())
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;s&quot;:
+						json.minutes_moderate_activity.value = 
+							(parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)/60).toString();
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+						break;
+					case &quot;h&quot;:
+						json.minutes_moderate_activity.value = 
+							(parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)*60).toString();
+						json.minutes_moderate_activity.units = &quot;min&quot;;
+				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+			break;
+
+		// PHYSICAL ACTIVITY
+		case &quot;257733005&quot;:
+			json = {
+    				&quot;physical_activity&quot;: {
+     				&quot;activity_name&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(),
+    				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+			if (msg[&apos;OBX&apos;][1] &amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString() == &quot;410668003&quot;)
+			{
+				json.physical_activity.distance = {
+					&quot;value&quot; : parseFloat(msg[&apos;OBX&apos;][1][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+				}
+				if (msg[&apos;OBX&apos;][1][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()) 
+				{
+					switch (msg[&apos;OBX&apos;][1][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().toLowerCase()) 
+					{
+						case &quot;meters&quot;:
+						case &quot;meter&quot;:
+						case &quot;metres&quot;:
+						case &quot;metre&quot;:
+						case &quot;m&quot;:
+							json.physical_activity.distance.units = &quot;m&quot;;
+							break;
+						case &quot;kilometers&quot;:
+						case &quot;kilometer&quot;:
+						case &quot;kilometres&quot;:
+						case &quot;kilometre&quot;:
+						case &quot;km&quot;:
+						case &quot;k&quot;: 
+							json.physical_activity.distance.units = &quot;km&quot;;
+							break;
+						case &quot;foot&quot;:
+						case &quot;feet&quot;:
+						case &quot;ft&quot;:
+						case &quot;f&quot;:
+							json.physical_activity.distance.units = &quot;ft&quot;;
+							break;
+						case &quot;yard&quot;:
+						case &quot;yards&quot;: 
+						case &quot;yd&quot;: 
+						case &quot;y&quot;:
+							json.physical_activity.distance.units = &quot;yd&quot;;
+							break;
+						case &quot;mile&quot;:
+						case &quot;miles&quot;:
+						case &quot;mi&quot;:
+							json.physical_activity.distance.units = &quot;mi&quot;;
+					}
+				}	
+			}
+			break;
+			
+		// SLEEP DURATION
+		case &quot;248263006&quot;:
+			json = {
+    				&quot;sleep_duration&quot;: {
+     				&quot;value&quot;: parseFloat(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10)
+    				}
+			}
+			if (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString())
+			{
+				switch (msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString().charAt(0)) 
+				{
+					case &quot;s&quot;:
+						json.sleep_duration.units = &quot;sec&quot;;
+						break;
+					case &quot;m&quot;: 
+						json.sleep_duration.units = &quot;min&quot;;
+						break;
+					case &quot;h&quot;:
+						json.sleep_duration.units = &quot;h&quot;;
+				}
+			}
+    			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}		
+	} // end switch
+} 
+else if (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;LN&quot;) 
+{
+	switch (msg[&apos;OBX&apos;][0][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString()) 
+	{
+		// CALORIES BURNED
+		case &quot;41981-2&quot;:
+			json = {
+    				&quot;kcal_burned&quot;: {
+     		   		&quot;value&quot;: parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10),
+        				&quot;unit&quot;: msg[&apos;OBX&apos;][0][&apos;OBX.6&apos;][&apos;OBX.6.1&apos;].toString()
+    				}
+			}
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+			if (msg[&apos;OBX&apos;][1] &amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.6&apos;].toString() == &quot;SCT&quot;
+					&amp;&amp; msg[&apos;OBX&apos;][1][&apos;OBX.3&apos;][&apos;OBX.3.4&apos;].toString() == &quot;257733005&quot;) {
+						
+    				json.activity_name = msg[&apos;OBX&apos;][1][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString();
+			}	
+			break;
+
+		// STEP COUNT
+		case &quot;55423-8&quot;:
+			json.step_count = parseInt(msg[&apos;OBX&apos;][0][&apos;OBX.5&apos;][&apos;OBX.5.1&apos;].toString(), 10);
+			if (msg[&apos;OBR&apos;] &amp;&amp; msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString()) 
+    			{
+    				json.effective_time_frame = {
+    					&quot;date_time&quot;: convertHL7Date(msg[&apos;OBR&apos;][&apos;OBR.7&apos;][&apos;OBR.7.1&apos;].toString())
+    					}
+    			}
+		
+	} // end switch
+}
+
+var jObj = JSON.stringify(json);
+channelMap.put(&quot;jObj&quot;, jObj);</string>
+            </entry>
+          </data>
+        </step>
+      </steps>
+      <inboundTemplate encoding="base64">TVNIfF5+XCZ8T0FERHx8REFERHx8MjAxNTAxMDcxNjMwNDl8fE9SVV5SMDF8MjAxMzI2OTAwODIx
+Mzl8UHwyLjJ8DVBJRHx8fDAwMTAwMjM0MTZeXl4xfDAwMTAwMjM0MTZ8WlpMWU5URVNUXkFORFle
+fHwxOTYwMTIxNXxNfF5efHx8fHx8fHx8RVYxMDQ5MTU1NzZ8fA1QVjF8fE9QfEFOVkxefHx8fDgy
+ODQ2N15PUFBFTF5BTkRSRVdeRE9VR0xBU3xefHx8fHx8fHx8fE9QfHx8fHx8fHx8fHx8fHx8fHx8
+fHx8fHx8fHwyMDE1MDEwMjAwMDB8MjAxNTAxMDQwMDAwfA1PUkN8UkV8fEgzNjczMHx8fHx8fHx8
+fDgyODQ2N15PUFBFTF5BTkRSRVdeRE9VR0xBU3x8fHxefA1PQlJ8fHxIMzY3MzB8U1NDUk5eUmFw
+aWQgU3RyZXAgQSBTY3JlZW5eXjY1NTYtNV5TdHJlcHRvY29jY3VzIHB5b2dlbmVzIEFnIFtQcmVz
+ZW5jZV0gaW4gVGhyb2F0IGJ5IEltbXVub2Fzc2F5XkxOfHx8MjAxNTAxMDUxNjI0fHx8fHx8fDIw
+MTUwMTA1MTYyNXxUaHJvYXReVGhyb2F0fDgyODQ2N15PUFBFTF5BTkRSRVdeRE9VR0xBU3x8fHxN
+NzA3Nnx8fHxNQ15NQnxGfHxeXl5eXlJ8Xn5efl58fHx8fHx8DU9CWCB8MSB8Tk0gfDI3MTY0OTAw
+NiBeU3lzdG9saWMgYmxvb2QgcHJlc3N1cmUgXlNOT01FRC1DVF4yNzE2NDkwMDZeU3lzdG9saWMg
+Ymxvb2QgcHJlc3N1cmUgKG9ic2VydmFibGUgZW50aXR5KV5TQ1R8IHwxMzIgfG1tW0hnXSB8OTAt
+MTIwIHxIIHwgfCB8RiB8IHwgfDIwMTAwNTExMjIwNTI1Ck9CWCB8MiB8Tk0gfDI3MTY1MDAwNiBe
+RGlhc3RvbGljIGJsb29kIHByZXNzdXJlIF5TTk9NRUQtQ1ReMjcxNjUwMDA2XkRpYXN0b2xpYyBi
+bG9vZCBwcmVzc3VyZSAob2JzZXJ2YWJsZSBlbnRpdHkpXlNDVHwgfDg2IHxtbVtIZ10gfDYwLTgw
+IHxIIHwgfCB8RiB8IHwgfDIwMTAwNTExMjIwNTI1Ck5URXwxfHxIZXJlIGFyZSB0d28gbGluZXMg
+b2YgY29tbWVudHMgdGhhdCBmb2xsb3cgdGhlIE9CWCBzZWdtZW50Lg0=</inboundTemplate>
+      <outboundTemplate encoding="base64"></outboundTemplate>
+      <inboundDataType>HL7V2</inboundDataType>
+      <outboundDataType>RAW</outboundDataType>
+      <inboundProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DataTypeProperties" version="3.2.0">
+        <serializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2SerializationProperties" version="3.2.0">
+          <handleRepetitions>true</handleRepetitions>
+          <handleSubcomponents>true</handleSubcomponents>
+          <useStrictParser>false</useStrictParser>
+          <useStrictValidation>false</useStrictValidation>
+          <stripNamespaces>true</stripNamespaces>
+          <segmentDelimiter>\r</segmentDelimiter>
+          <convertLineBreaks>true</convertLineBreaks>
+        </serializationProperties>
+        <deserializationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2DeserializationProperties" version="3.2.0">
+          <useStrictParser>false</useStrictParser>
+          <useStrictValidation>false</useStrictValidation>
+          <segmentDelimiter>\r</segmentDelimiter>
+        </deserializationProperties>
+        <batchProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2BatchProperties" version="3.2.0">
+          <splitType>MSH_Segment</splitType>
+          <batchScript></batchScript>
+        </batchProperties>
+        <responseGenerationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseGenerationProperties" version="3.2.0">
+          <segmentDelimiter>\r</segmentDelimiter>
+          <successfulACKCode>AA</successfulACKCode>
+          <successfulACKMessage></successfulACKMessage>
+          <errorACKCode>AE</errorACKCode>
+          <errorACKMessage>An Error Occurred Processing Message.</errorACKMessage>
+          <rejectedACKCode>AR</rejectedACKCode>
+          <rejectedACKMessage>Message Rejected.</rejectedACKMessage>
+          <msh15ACKAccept>false</msh15ACKAccept>
+          <dateFormat>yyyyMMddHHmmss.SSS</dateFormat>
+        </responseGenerationProperties>
+        <responseValidationProperties class="com.mirth.connect.plugins.datatypes.hl7v2.HL7v2ResponseValidationProperties" version="3.2.0">
+          <successfulACKCode>AA,CA</successfulACKCode>
+          <errorACKCode>AE,CE</errorACKCode>
+          <rejectedACKCode>AR,CR</rejectedACKCode>
+          <validateMessageControlId>true</validateMessageControlId>
+          <originalMessageControlId>Destination_Encoded</originalMessageControlId>
+          <originalIdMapVariable></originalIdMapVariable>
+        </responseValidationProperties>
+      </inboundProperties>
+      <outboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+        <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+          <splitType>JavaScript</splitType>
+          <batchScript></batchScript>
+        </batchProperties>
+      </outboundProperties>
+    </transformer>
+    <filter version="3.2.0">
+      <rules/>
+    </filter>
+    <transportName>HTTP Listener</transportName>
+    <mode>SOURCE</mode>
+    <enabled>true</enabled>
+    <waitForPrevious>true</waitForPrevious>
+  </sourceConnector>
+  <destinationConnectors>
+    <connector version="3.2.0">
+      <metaDataId>1</metaDataId>
+      <name>Destination 1</name>
+      <properties class="com.mirth.connect.connectors.vm.VmDispatcherProperties" version="3.2.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="3.2.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="singleton-set">
+            <string>Default Resource</string>
+          </resourceIds>
+        </destinationConnectorProperties>
+        <channelId>none</channelId>
+        <channelTemplate>${jObj}</channelTemplate>
+        <mapVariables/>
+      </properties>
+      <transformer version="3.2.0">
+        <steps/>
+        <inboundDataType>RAW</inboundDataType>
+        <outboundDataType>RAW</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="3.2.0">
+        <steps/>
+        <inboundDataType>RAW</inboundDataType>
+        <outboundDataType>RAW</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.raw.RawDataTypeProperties" version="3.2.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.raw.RawBatchProperties" version="3.2.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="3.2.0">
+        <rules/>
+      </filter>
+      <transportName>Channel Writer</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
+  </destinationConnectors>
+  <preprocessingScript>// Modify the message variable below to pre process data
+return message;</preprocessingScript>
+  <postprocessingScript>// This script executes once after a message has been processed
+// Responses returned from here will be stored as &quot;Postprocessor&quot; in the response map
+return;</postprocessingScript>
+  <deployScript>// This script executes once when the channel is deployed
+// You only have access to the globalMap and globalChannelMap here to persist data
+return;</deployScript>
+  <undeployScript>// This script executes once when the channel is undeployed
+// You only have access to the globalMap and globalChannelMap here to persist data
+return;</undeployScript>
+  <properties version="3.2.0">
+    <clearGlobalChannelMap>true</clearGlobalChannelMap>
+    <messageStorageMode>PRODUCTION</messageStorageMode>
+    <encryptData>false</encryptData>
+    <removeContentOnCompletion>false</removeContentOnCompletion>
+    <removeAttachmentsOnCompletion>false</removeAttachmentsOnCompletion>
+    <initialState>STARTED</initialState>
+    <storeAttachments>false</storeAttachments>
+    <tags class="linked-hash-set"/>
+    <metaDataColumns>
+      <metaDataColumn>
+        <name>SOURCE</name>
+        <type>STRING</type>
+        <mappingName>mirth_source</mappingName>
+      </metaDataColumn>
+      <metaDataColumn>
+        <name>TYPE</name>
+        <type>STRING</type>
+        <mappingName>mirth_type</mappingName>
+      </metaDataColumn>
+    </metaDataColumns>
+    <attachmentProperties>
+      <type>None</type>
+      <properties/>
+    </attachmentProperties>
+    <archiveEnabled>true</archiveEnabled>
+    <resourceIds class="linked-hash-set">
+      <string>Default Resource</string>
+    </resourceIds>
+  </properties>
+</channel>
