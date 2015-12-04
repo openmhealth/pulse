@@ -10,9 +10,9 @@ In collaboration with Open mHealth, Catalyze is sharing its Mirth Connect channe
 
 1) Install Open Source Mirth Connect. [I've written up a separate gist that will help you download and install Mirth Connect for Linux](https://gist.github.com/molsches/322bce27f21b65768f12).
 
-2) [Install the Open mHealth DSU](https://github.com/openmhealth/omh-dsu-ri). If you want to deploy this on HIPAA-compliant infrastructure right away, we've made contributions so that this can be easily bootstrapped onto the Catalyze [Platform as a Service](https://catalyze.io/paas).
+2) [Install the Open mHealth data storage component](https://github.com/openmhealth/omh-dsu-ri). If you want to deploy this on HIPAA-compliant infrastructure right away, we've made contributions so that this can be easily bootstrapped onto the Catalyze [Platform as a Service](https://catalyze.io/paas).
 
-3) Once Mirth is up and running, you can import the channels and point them towards your own DSU for quick integration. Current the Mirth channels are mapped using SNOMED/LOINC codes. If you are not receiving or are unable to write values back into the EHR using those values, you will need to do your own mappings on OBX 3.1 -3.3. 
+3) Once Mirth is up and running, you can import the channels and point them towards your own storage component for quick integration. Current the Mirth channels are mapped using SNOMED/LOINC codes. If you are not receiving or are unable to write values back into the EHR using those values, you will need to do your own mappings on OBX 3.1 -3.3. 
 
 ##Future Roadmap##
 
