@@ -1,6 +1,6 @@
 # Pulse 
 
-In collaboration with Open mHealth, Catalyze is sharing its Mirth Connect channels and corresponding documentation on mapping HL7 messages to Open mHealth schemas. This repo contains the following:
+In collaboration with [Open mHealth](www.openmhealth.org), Catalyze is sharing its Mirth Connect channels and corresponding documentation on mapping HL7 messages to Open mHealth schemas. This repo contains the following:
 
 - Mirth Channels: A fully plug-and-play set of channels to write, ingest and convert HL7 to OmH schemas and vice versa
 - Open mHealth Schema mappings: Written in Javascript in a format which serializes HL7 like Mirth Connect does as arrays. Should be broadly applicable for other formats and can be extended via the repo
